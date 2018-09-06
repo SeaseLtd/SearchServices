@@ -82,6 +82,7 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         shardMethod = p.getProperty("shard.method", SHARD_METHOD_DBID);
         String shardKey = p.getProperty("shard.key");
         if(shardKey != null) {
+            log.debug("#### Shard key: " + shardKey);
             shardProperty = getShardProperty(shardKey);
         }
 
@@ -135,7 +136,7 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         if(!isMaster && isSlave)
         {
             // Dynamic registration
-            
+            log.debug("### Slave mode");
             ShardState shardstate = getShardState();
             client.getTransactions(0L, null, 0L, null, 0, shardstate);
             return;
@@ -195,6 +196,7 @@ public class MetadataTracker extends AbstractTracker implements Tracker
      */
     private void checkRepoAndIndexConsistency(TrackerState state) throws AuthenticationException, IOException, JSONException
     {
+        log.debug("#### Checking Index consistancy against the Repo ####");
         Transactions firstTransactions = null;
         if (state.getLastGoodTxCommitTimeInIndex() == 0) 
         {
@@ -560,9 +562,12 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         // step forward in time until we find something or hit the time bound
         // max id unbounded
         Long startTime = fromCommitTime == null ? Long.valueOf(0L) : fromCommitTime;
+        log.debug("#### getSomeTransactions #### "+ startTime.longValue() + " : " + endTime);
+        
         do
         {
             transactions = client.getTransactions(startTime, null, startTime + actualTimeStep, null, maxResults, shardstate);
+            //log.debug("#### fetched transactions #### " + startTime.longValue() + ":" + transactions.getTransactions().size());
             startTime += actualTimeStep;
 
         } while (((transactions.getTransactions().size() == 0) && (startTime < endTime))
@@ -599,9 +604,10 @@ public class MetadataTracker extends AbstractTracker implements Tracker
 
 
                 Long fromCommitTime = getTxFromCommitTime(txnsFound, state.getLastGoodTxCommitTimeInIndex());
+                log.debug("#### from commit time #### " + fromCommitTime.longValue());
+
                 transactions = getSomeTransactions(txnsFound, fromCommitTime, TIME_STEP_1_HR_IN_MS, 2000,
                                                    state.getTimeToStopIndexing());
-
 
                 setLastTxCommitTimeAndTxIdInTrackerState(transactions, state);
 
@@ -766,9 +772,9 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         {
             if (log.isDebugEnabled())
             {
-                log.debug(node.toString());
+                log.debug(String.format("#### Adding node id: %d txid: %d", node.getId(),node.getTxnId()));
             }
-            nodeBatch.add(node);
+             nodeBatch.add(node);
             if (nodeBatch.size() > nodeBatchSize)
             {
                 nodeCount += nodeBatch.size();
