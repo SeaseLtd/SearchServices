@@ -184,6 +184,7 @@ public class MetadataTracker extends AbstractTracker implements Tracker
                         .endShard()
                      .endShardInstance()
                 .build();
+        log.debug("### Shard State: " + shardstate.getShardInstance());
         return shardstate;
     }
 
