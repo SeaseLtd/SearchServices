@@ -19,7 +19,12 @@
 package org.alfresco.solr.tracker;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Properties;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.alfresco.error.AlfrescoRuntimeException;
@@ -205,11 +210,16 @@ public class MetadataTracker extends AbstractTracker implements Tracker
             state.setCheckedFirstTransactionTime(true);
             log.info("No transactions found - no verification required");
 
+            //Get txns from repo
+            log.debug("=== Get first known transactions ===");
             firstTransactions = client.getTransactions(null, 0L, null, 2000L, 1);
+            log.debug("#### max txid : " + firstTransactions.getMaxTxnId());
+            log.debug("#### the txns : " + firstTransactions.getTransactions().toString());
             if (!firstTransactions.getTransactions().isEmpty())
             {
                 Transaction firstTransaction = firstTransactions.getTransactions().get(0);
                 long firstTransactionCommitTime = firstTransaction.getCommitTimeMs();
+                log.debug("#### firstTransactionCommitTime : " + firstTransactionCommitTime);
                 state.setLastGoodTxCommitTimeInIndex(firstTransactionCommitTime);
                 setLastTxCommitTimeAndTxIdInTrackerState(firstTransactions, state);
             }
@@ -563,12 +573,12 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         // step forward in time until we find something or hit the time bound
         // max id unbounded
         Long startTime = fromCommitTime == null ? Long.valueOf(0L) : fromCommitTime;
-        log.debug("#### getSomeTransactions #### "+ startTime.longValue() + " : " + endTime);
+        log.debug("#### MetadataTracker getSomeTransactions start time: " + 
+                  startTime.longValue() + " end : " + endTime);
         
         do
         {
             transactions = client.getTransactions(startTime, null, startTime + actualTimeStep, null, maxResults, shardstate);
-            //log.debug("#### fetched transactions #### " + startTime.longValue() + ":" + transactions.getTransactions().size());
             startTime += actualTimeStep;
 
         } while (((transactions.getTransactions().size() == 0) && (startTime < endTime))
@@ -603,16 +613,16 @@ public class MetadataTracker extends AbstractTracker implements Tracker
 
                 this.state = getTrackerState();
 
-
+                log.debug("#### Check txnsFound : " + txnsFound.size());
                 Long fromCommitTime = getTxFromCommitTime(txnsFound, state.getLastGoodTxCommitTimeInIndex());
-                log.debug("#### from commit time #### " + fromCommitTime.longValue());
-
+                log.debug("#### Get txn from commit time: " + fromCommitTime);
+                
                 transactions = getSomeTransactions(txnsFound, fromCommitTime, TIME_STEP_1_HR_IN_MS, 2000,
                                                    state.getTimeToStopIndexing());
 
                 setLastTxCommitTimeAndTxIdInTrackerState(transactions, state);
 
-                log.info("Scanning transactions ...");
+                log.info( String.format("Scanning transactions in %s ...", this.coreName));
                 if (transactions.getTransactions().size() > 0) {
                     log.info(".... from " + transactions.getTransactions().get(0));
                     log.info(".... to " + transactions.getTransactions().get(transactions.getTransactions().size() - 1));
@@ -678,7 +688,6 @@ public class MetadataTracker extends AbstractTracker implements Tracker
                     }
                     txBatch.clear();
                 }
-
                 if (txsIndexed.size() > 0) {
                     indexTransactionsAfterAsynchronous(txsIndexed, state);
                     long endElapsed = System.nanoTime();
@@ -766,16 +775,17 @@ public class MetadataTracker extends AbstractTracker implements Tracker
         gnp.setStoreProtocol(storeRef.getProtocol());
         gnp.setStoreIdentifier(storeRef.getIdentifier());
         gnp.setShardProperty(shardProperty);
+        log.debug("## Get nodes from txids: " + gnp.getTransactionIds());
+        log.debug("## Starting from Node: " + gnp.getFromNodeId());
+        log.debug("## Up to Node: " + gnp.getToNodeId());
         List<Node> nodes = client.getNodes(gnp, Integer.MAX_VALUE);
+        log.debug("## nodes size: " + nodes.size());
         
         ArrayList<Node> nodeBatch = new ArrayList<>();
         for (Node node : nodes)
         {
-            if (log.isDebugEnabled())
-            {
-                log.debug(String.format("#### Adding node id: %d txid: %d", node.getId(),node.getTxnId()));
-            }
-             nodeBatch.add(node);
+            log.debug(String.format("#### Adding node id: %d txid: %d", node.getId(),node.getTxnId()));
+            nodeBatch.add(node);
             if (nodeBatch.size() > nodeBatchSize)
             {
                 nodeCount += nodeBatch.size();
