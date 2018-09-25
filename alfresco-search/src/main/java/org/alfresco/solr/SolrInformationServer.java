@@ -1662,6 +1662,7 @@ public class SolrInformationServer implements InformationServer
     @Override
     public void indexNode(Node node, boolean overwrite) throws IOException, AuthenticationException, JSONException
     {
+        log.debug("## Start indexing a node ###");
         SolrQueryRequest request = null;
         UpdateRequestProcessor processor = null;
         try
@@ -2291,6 +2292,7 @@ public class SolrInformationServer implements InformationServer
     @Override
     public void indexNodes(List<Node> nodes, boolean overwrite, boolean cascade) throws IOException, AuthenticationException, JSONException
     {
+        log.debug("### index nodes start ###");
         SolrQueryRequest request = null;
         UpdateRequestProcessor processor = null;
         try
@@ -2367,7 +2369,7 @@ public class SolrInformationServer implements InformationServer
 
             if (!updatedNodeIds.isEmpty() || !unknownNodeIds.isEmpty() || !shardUpdatedNodeIds.isEmpty())
             {
-                log.info(".. updating");
+                log.info(".... updating");
                 NodeMetaDataParameters nmdp = new NodeMetaDataParameters();
                 List<Long> nodeIds = new LinkedList<>();
                 nodeIds.addAll(updatedNodeIds);
@@ -2380,7 +2382,7 @@ public class SolrInformationServer implements InformationServer
 
                 NEXT_NODE: for (NodeMetaData nodeMetaData : nodeMetaDatas)
                 {
-                    //System.out.println("####################### NodeMetaData:"+ nodeMetaData.getId());
+                    log.debug("####################### NodeMetaData:"+ nodeMetaData.getId());
                     long start = System.nanoTime();
 
                     Node node = nodeIdsToNodes.get(nodeMetaData.getId());
@@ -2409,7 +2411,7 @@ public class SolrInformationServer implements InformationServer
 
                             continue;
                         }
-
+                        
                         AddUpdateCommand addDocCmd = new AddUpdateCommand(request);
                         addDocCmd.overwrite = overwrite;
 
@@ -2441,14 +2443,14 @@ public class SolrInformationServer implements InformationServer
                         // Make sure any unindexed or error doc is removed.
                         if (log.isDebugEnabled())
                         {
-                            log.debug(".. deleting node " + node.getId());
+                            log.debug(".... deleting node " + node.getId());
                         }
                         deleteNode(processor, request, node);
 
                         SolrInputDocument doc = createNewDoc(nodeMetaData, DOC_TYPE_NODE);
                         addToNewDocAndCache(nodeMetaData, doc);
                         addDocCmd.solrDoc = doc;
-                        //System.out.println("###################### indexing doc:"+doc.toString());
+                        log.debug("###################### indexing doc: " + doc.toString());
                         processor.processAdd(addDocCmd);
 
                         long end = System.nanoTime();

@@ -149,8 +149,11 @@ public class MetadataTracker extends AbstractTracker implements Tracker
 
         // Check we are tracking the correct repository
         TrackerState state = super.getTrackerState();
+        log.debug(state.toString());
+        log.debug("### state cycle: " + state.getTrackerCycles());
         if(state.getTrackerCycles() == 0)
         {
+            log.debug("## TrackerCycles is 0, running checkRepoAndIndexConsistency(state)");
             //We have a new tracker state so do the checks.
             checkRepoAndIndexConsistency(state);
         }
@@ -165,7 +168,9 @@ public class MetadataTracker extends AbstractTracker implements Tracker
     private ShardState getShardState()
     {
         TrackerState state = super.getTrackerState();
-       
+        log.debug(state.toString());
+        log.debug("### state cycle: " + state.getTrackerCycles());
+        
         ShardState shardstate =  ShardStateBuilder.shardState()
                 .withMaster(isMaster)
                 .withLastUpdated(System.currentTimeMillis())
@@ -213,8 +218,10 @@ public class MetadataTracker extends AbstractTracker implements Tracker
             //Get txns from repo
             log.debug("=== Get first known transactions ===");
             firstTransactions = client.getTransactions(null, 0L, null, 2000L, 1);
-            log.debug("#### max txid : " + firstTransactions.getMaxTxnId());
-            log.debug("#### the txns : " + firstTransactions.getTransactions().toString());
+            log.debug(String.format("#### %s max txid : %d ", this.coreName, firstTransactions.getMaxTxnId()));
+            log.debug(String.format("#### %s the txns : %s",
+                      this.coreName,
+                      firstTransactions.getTransactions().toString()));
             if (!firstTransactions.getTransactions().isEmpty())
             {
                 Transaction firstTransaction = firstTransactions.getTransactions().get(0);

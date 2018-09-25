@@ -268,12 +268,25 @@ public abstract class AbstractTracker implements Tracker
     @Override
     public synchronized TrackerState getTrackerState()
     {
+        if (log.isDebugEnabled())
+        {
+            log.debug("## Getting tracker state...");
+        }
         if(this.state != null)
         {
+            if (log.isDebugEnabled())
+            {
+                 log.debug("## State is not null...");
+                 log.debug(state.toString());
+            }
            return this.state;
         }
         else
         {
+            if (log.isDebugEnabled())
+            {
+                log.debug("## State is null, returning initial state");
+            }
             return this.infoSrv.getTrackerInitialState();
         }
     }
